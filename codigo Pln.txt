@@ -1,0 +1,89 @@
+import nltk
+from nltk.stem.snowball import SnowballStemmer
+import spacy
+from gensim.models import Word2Vec
+from transformers import pipeline
+
+# Baixar apenas o punkt padrão (não precisa do punkt_tab)
+nltk.download("punkt")
+
+# Carregar modelo de português do spaCy
+nlp = spacy.load("pt_core_news_sm")
+
+# Inicializar stemmer para português
+stemmer = SnowballStemmer("portuguese")
+
+# Lista de feedbacks
+feedbacks = [
+    'Produto chegou antes do prazo, muito bem embalado',
+    'Qualidade surpreendente pelo preço, super recomendo',
+    'Atendimento rápido e atencioso, tiraram todas minhas dúvidas',
+    'Design moderno e bonito, combina com qualquer ambiente',
+    'Funciona exatamente como descrito, sem surpresas negativas',
+    'Material resistente, parece que vai durar bastante',
+    'Fácil de usar, até para quem não entende muito de tecnologia',
+    'Ótimo custo-benefício, vale cada centavo',
+    'Manual bem explicado, instalação simples',
+    'Produto leve e prático de transportar',
+    'A bateria dura muito mais do que eu esperava',
+    'Excelente para presentear, embalagem elegante',
+    'Atendimento pós-venda impecável, resolveram meu problema rápido',
+    'Superou minhas expectativas, desempenho acima da média',
+    'Recomendo para amigos e familiares, todos ficaram satisfeitos',
+    'Produto veio com arranhões, parecia usado',
+    'Manual confuso, demorei para entender como montar',
+    'Atendimento demorado, fiquei dias sem resposta',
+    'Não correspondeu às fotos do anúncio',
+    'Material frágil, quebrou em pouco tempo',
+    'O preço é alto para a qualidade entregue',
+    'Embalagem mal feita, chegou amassado',
+    'Produto esquenta demais durante o uso',
+    'Não funcionou como prometido, fiquei decepcionado',
+    'O som é baixo, não atende ambientes maiores',
+    'A bateria descarrega rápido, não dura um dia inteiro',
+    'Achei pesado e desconfortável para carregar',
+    'O cheiro do material é forte e desagradável',
+    'Não tem suporte técnico na minha região',
+    'O prazo de entrega foi muito maior do que o informado'
+]
+
+# Pré-processamento: tokenização com spaCy
+sentences = []
+for fb in feedbacks:
+    doc = nlp(fb)
+    tokens_spacy = [token.text.lower() for token in doc if not token.is_punct]  # remover pontuação
+    lemmas_spacy = [token.lemma_.lower() for token in doc if not token.is_punct]
+    stems_nltk = [stemmer.stem(token) for token in tokens_spacy]
+
+    # Guardar frases tokenizadas para Word2Vec
+    sentences.append(tokens_spacy)
+
+    # Exibir resultados
+    print(f"📌 Feedback: {fb}")
+    print(f"🔹 Tokens (spaCy): {tokens_spacy}")
+    print(f"🔹 Lemas (spaCy): {lemmas_spacy}")
+    print(f"🔹 Stems (NLTK): {stems_nltk}")
+    print("-" * 80)
+
+# Treinar modelo Word2Vec com os feedbacks
+model = Word2Vec(sentences, vector_size=100, window=5, min_count=1, sg=1)
+
+# Exemplos de uso do Word2Vec
+print("\n=== Exemplos Word2Vec ===")
+print("Similaridade entre 'produto' e 'qualidade':", model.wv.similarity("produto", "qualidade"))
+print("Palavras mais próximas de 'atendimento':", model.wv.most_similar("atendimento"))
+
+# ============================
+# Etapa 3 – Análise de Sentimentos com BERT
+# ============================
+
+# Carregar pipeline de análise de sentimentos com BERTimbau
+classifier = pipeline("sentiment-analysis", model="neuralmind/bert-base-portuguese-cased")
+
+print("\n=== Análise de Sentimentos com BERT ===")
+for fb in feedbacks:
+    result = classifier(fb)[0]
+    print(f"📌 Feedback: {fb}")
+    print(f"🔹 Sentimento: {result['label']} (confiança: {result['score']:.2f})")
+    print("-" * 80)
+
